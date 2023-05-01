@@ -3,7 +3,7 @@ import numpy as np
 from matplotlib.pyplot import plot
 from matplotlib import pyplot as plt
 #sorted points with regards to its x value
-def convexity(points, n=4, k=3):
+def convexity(points, n=2, k=1):
     convex = []
     non_convex = []
     prev_slope = 0
@@ -31,7 +31,9 @@ def renormalize(points, convex, non_convex, n=4):
         convex_score = 0
         non_convex_score = 0
         for j in range(-n//2, n//2+1):
-            index = min(max(0, i+j), len(points)-1)
+            index = i+j
+            if index < 0 or index >= len(points):
+                continue
             if points[index] in convex:
                 convex_score +=1
             if points[index] in non_convex:
@@ -51,18 +53,18 @@ def renormalize(points, convex, non_convex, n=4):
 points = []
 
 def sin(x):
-    r = np.random.random()
+    r = 0
     return ((x+r)/10, np.sin((x+r)/10))
 
 def noisy_sin(x, noise_level = 0.1):
-    r = np.random.random()
+    
     y_noise = np.random.normal(scale=noise_level)
-    return ((x+r)/10, np.sin((x+r)/10 + y_noise))
+    return (x/10, np.sin(x/10 + y_noise))
 
 
 
 for i in range(100):
-    points += [sin(i)]
+    points += [noisy_sin(i)]
 
 
 c, nc = convexity(points)
@@ -72,8 +74,20 @@ x = np.linspace(0, 10, 100)
 # Calculate y values using sin function
 y = np.sin(x)
 
+def evaluate_region(start, stop, convex, non_convex):
+    c = 0
+    nc = 0
+    for p in convex:
+        if p[0] >= start and p[0] < stop:
+            c +=1
 
-print(c, nc)
+    for p in non_convex:
+        if p[0] >= start and p[0] < stop:
+            nc +=1
+    return c, nc
+
+
+print(evaluate_region(0, 10, c, nc))
 plot(list(map(lambda x: x[0], c)), list(map(lambda x: x[1], c)), 'bo')
 plot(list(map(lambda x: x[0], nc)), list(map(lambda x: x[1], nc)), 'ro')
 plot(x, y, 'g')
