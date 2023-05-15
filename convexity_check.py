@@ -14,18 +14,21 @@ def calc_distances(points, A):
         distances[i] = logarithmic_distance(A, p)
     return distances
 
-def convexity(points, n=3, k=1, r=0.2):
+def convexity(points, n=3, k=1, r=0.5):
     convex = []
     non_convex = []
     prev_slope = 0
+    slopes = np.zeros(len(points))
     
     for i in tqdm(range(len(points))):
         distances = calc_distances(points, points[i])
         neighbors = []
+        
         for j in range(len(points)):
             if distances[j] < r:
                 neighbors.append(points[j])
         neighbors = np.array(neighbors)
+        
         
         X = neighbors.T[0].reshape((-1, 1))
         y = neighbors.T[1]
@@ -33,7 +36,8 @@ def convexity(points, n=3, k=1, r=0.2):
         model.fit(X, y)
 
         slope = model.coef_[0]
-        
+        slopes[i] = slope
+
         if slope > prev_slope:
             convex += [points[i]]
         if slope < prev_slope:
@@ -47,11 +51,11 @@ def convexity(points, n=3, k=1, r=0.2):
     for i in range(k):
         convex, non_convex = renormalize(points, convex, non_convex, n=n)
     
-    return convex, non_convex
+    return convex, non_convex, slopes
 
 
 def logarithmic_distance(A, B): 
-    return np.sqrt((np.log(A[0]/B[0])**2 + (A[1]-B[1])**2))
+    return np.sqrt((np.log2(A[0]/B[0])**2 + (A[1]-B[1])**2))
 
 
 def renormalize(points, convex, non_convex, n=4):
@@ -82,7 +86,7 @@ def renormalize(points, convex, non_convex, n=4):
     return res_c, res_nc
 
 
-points = []
+
 
 def sin(x):
     r = 0
@@ -97,19 +101,19 @@ def exp(x):
     return (2**(x*0.001), np.exp(-0.001*x))
 
 
-N = 1000
-for i in range(N):
-    points += [exp(i)]
+N = 10000
 
-x = np.logspace(0, 2, N)
+x = np.logspace(0, 4, N)
 
 # Calculate y values using sin function
 y = x * x * np.exp(-x) 
 scale = 0.05 * (np.max(y) - np.min(y))
 
 Y = y + np.random.normal(scale=scale, size=N)
-Y = savgol_filter(Y, window_length=30, polyorder=2)
-c, nc = convexity(np.array(list(zip(x,Y))))
+ #= savgol_filter(Y, window_length=20, polyorder=2, deriv=2)
+d = (x*x-4*x+2) * np.exp(-x)
+Y = savgol_filter(Y, window_length=20, polyorder=2)
+c, nc, slopes = convexity(np.array(list(zip(x,Y))))
 
 
 def evaluate_region(start, stop, convex, non_convex):
@@ -124,12 +128,28 @@ def evaluate_region(start, stop, convex, non_convex):
             nc +=1
     return c, nc
 
+nc = np.array(nc)
 
 
+
+deriv_2 = np.diff(slopes)/np.diff(x)
+
+
+"""
+print(np.diff(slopes))
+print(deriv_2)
 print(evaluate_region(1, 3, c, nc),evaluate_region(4, 20, c, nc))
-plot(list(map(lambda x: x[0], c)), list(map(lambda x: x[1], c)), 'bo', markersize=8)
-plot(list(map(lambda x: x[0], nc)), list(map(lambda x: x[1], nc)), 'ro')
-plt.legend(['convex', 'nonconvex'])
-plot(x, y, 'g')
-xscale("log")
+#plot(list(map(lambda x: x[0], c)), list(map(lambda x: x[1], c)), 'bo', markersize=8)
+#plot(list(map(lambda x: x[0], nc)), list(map(lambda x: x[1], nc)), 'ro')
+plot(x, slopes)
+plot(x[:-1], deriv_2)
+plot(x, d)
+plt.legend(['dx/dy', '2nd derivative', 'precomputed'])
+plot(x, Y)
+xscale("log", base=2)
+plt.show()
+"""
+
+plt.hist(deriv_2[np.where(deriv_2 < -0.01)])
+
 plt.show()
