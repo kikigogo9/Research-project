@@ -173,8 +173,9 @@ plot(x[::5], np.mean(Y.reshape((29,5)), axis=1))
 xscale("log", base=2)
 plt.legend(['dx/dy', '2nd derivative', 'learning curve'])
 plt.show()
-plt.hist(deriv_2, [-0.05, 0, 0.05, 0.1, 0.15, 0.2]) #[np.where(deriv_2 < 0)]
-
+plt.hist(deriv_2[np.where(deriv_2 >= 0)], [-0.05, 0, 0.05, 0.1, 0.15, 0.2]) #[np.where(deriv_2 < 0)]
+plt.hist(deriv_2[np.where(deriv_2 < 0)], [-0.05, 0, 0.05, 0.1, 0.15, 0.2]) #[np.where(deriv_2 < 0)]
+plt.legend(['number of convex anchors', 'number of nonconvex anchors'])
 plt.show()
 
 print(f'Average second derivative: {np.mean(deriv_2)}')
