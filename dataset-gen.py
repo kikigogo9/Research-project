@@ -28,4 +28,4 @@ train_sizes = np.sqrt(2) ** (train_sizes-N)
 print(train_sizes)      
 
 
-plot_learning_curve(model, X_train, y_train, train_sizes, cv=5, scoring='neg_mean_squared_error')
+plot_learning_curve(model, X_train, y_train, train_sizes, cv=5, scoring='accuracy')

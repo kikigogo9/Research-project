@@ -26,7 +26,7 @@ def convexity(points, n=3, k=1, r=0.5):
         neighbors = []
         
         for j in range(len(points)):
-            if distances[j] < r:
+            if distances[j] <= r:
                 neighbors.append(points[j])
         neighbors = np.array(neighbors)
         print(neighbors.size)
@@ -121,7 +121,7 @@ def gen():
 def load():
     Y = np.loadtxt('test_std.txt')
     N = 29
-    Y = -Y.flatten()
+    Y = 1.0-Y.flatten()
     
     
     print(N)
@@ -132,7 +132,7 @@ def load():
 
     return x, Y
 
-r=1
+r=1.0
 x, Y = load()
 c, nc, slopes = convexity(np.array(list(zip(x,Y))), r=r)
 
@@ -167,10 +167,13 @@ plot(x, deriv_2)
 #plot(x, d)
 
 plot(x[::5], np.mean(Y.reshape((29,5)), axis=1))
+#for i in range(5):
+#    plot(x[i::5], Y[i::5])
+
 xscale("log", base=2)
 plt.legend(['dx/dy', '2nd derivative', 'learning curve'])
 plt.show()
-plt.hist(deriv_2) #[np.where(deriv_2 < 0)]
+plt.hist(deriv_2, [-0.05, 0, 0.05, 0.1, 0.15, 0.2]) #[np.where(deriv_2 < 0)]
 
 plt.show()
 
