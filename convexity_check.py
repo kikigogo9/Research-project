@@ -11,11 +11,11 @@ from tqdm import tqdm
 IMAGE_COUNT = 0
 
 class Derivatives:
-    def __init__(self, x=[], Y=[], r=0.5, name='default', N=0):
+    def __init__(self, x=[], Y=[], r=0.5, name='default', N=1):
         self.x = x
         self.Y = Y
         self.r = r
-        self.points = np.array(list(zip(x, Y)))
+        #self.points = np.array(list(zip(x,Y)))
         self.slopes = None
         self.name = name
         self.metric = 0.0
@@ -30,25 +30,20 @@ class Derivatives:
         for i ,p in enumerate(self.points):
             distances[i] = self.logarithmic_distance(A, p)
         return distances
-    def slope_2(self):
-        self.slopes = savgol_filter(self.Y, window_length=self.N*3, polyorder=2, deriv=1)
-        self.slopes = np.array(self.slopes)
-        return self.slopes
-    def slope(self):
-        self.slopes = np.zeros(len(self.points))
 
-        for i in range(len(self.points)):
-            distances = self.calc_distances(self.points[i])
-            neighbors = []
+    def slope(self):
         
-            for j in range(len(self.points)):
-                if distances[j] <= self.r:
-                    neighbors.append(self.points[j])
-            neighbors = np.array(neighbors)
+        self.slopes = np.zeros(len(self.x))
+
+        for i in range(len(self.x)):
+            low = max(0, i//self.N -1)
+            high = i // self.N * self.N + self.N
+            #neighbors = self.points[low:high]
+            #print(i // self.N * self.N , i // self.N * self.N + 2 * self.N)
             
 
-            X = neighbors.T[0].reshape((-1, 1))
-            y = neighbors.T[1]
+            X = self.x[low:high].reshape((-1, 1))
+            y = self.Y[low:high]
             model = LinearRegression()
             model.fit(X, y)
 
@@ -91,26 +86,30 @@ class Derivatives:
         
     def preprocess(self):
         self.N = self.Y.shape[0]
+        
         self.Y = self.Y.flatten()
         
     
         self.x = np.repeat(self.x, self.N)
 
-        self.points = np.array(list(zip(self.x, self.Y)))
+        #self.points = np.array(list(zip(self.x, self.Y)))
         #self.Y = savgol_filter(self.Y, window_length=self.N*2, polyorder=2)
         return self.x, self.Y
     
     def map(self):
-        self.Y = (self.Y - np.min(self.Y)) /  (np.max(self.Y) - np.min(self.Y))
+        if (np.max(self.Y) - np.min(self.Y)) != 0:
+            self.Y = (self.Y - np.min(self.Y)) /  (np.max(self.Y) - np.min(self.Y))
+            #print(np.max(self.Y) , np.min(self.Y))
+        #self.points = np.column_stack((self.x,self.Y))
 
 
     def save_image(self, Y):
-
+        
         if self.draw_image:
             x = self.x[::self.N]
             deriv_1 = self.Y[::self.N]
             deriv_2 = self.slopes[::self.N]
-            Y = np.mean(Y, axis=0)
+            Y_mean = np.mean(Y, axis=0)
 
             fig, ax = plt.subplots(2, 2, figsize=(25, 16))
 
@@ -135,7 +134,8 @@ class Derivatives:
             ax[1,0].set_xscale("log", base=2)
             ax[1,0].plot(x, deriv_1, color='green')
             ax[1,1].plot(x, deriv_2, color='red')
-            ax[0,1].plot(x, Y)
+            ax[0,1].plot(x, Y_mean)
+            ax[0,1].fill_between(x, np.max(Y, axis=0), np.min(Y, axis=0), alpha=0.3)
             #for i in range(5):
             #    plot(x[i::5], Y[i::5])
             #        xscale("log", base=2)
@@ -156,10 +156,11 @@ class Derivatives:
             print(f'Average second derivative: {np.mean(deriv_2)}')
             print(f'Average nonconvexity: {np.mean(deriv_2[np.where(deriv_2 < 0)])}')
             print(f'Maximum nonconvexity: {np.min(deriv_2[np.where(deriv_2 < 0)])}')
-        
-        self.metric = np.mean(self.slopes[np.where(self.slopes < 0)]) * len(np.where(self.slopes < 0)) / len(self.slopes)
-        self.inverse_metric = np.mean(self.slopes[np.where(self.slopes >= 0)]) * len(np.where(self.slopes >= 0)) / len(self.slopes)
-        print(self.metric)
+        #np.sum(self.slopes[np.where(self.slopes < 0)]) *
+        #np.sum(self.slopes[np.where(self.slopes >= 0)]) *
+        self.metric = len(self.slopes[np.where(self.slopes < 0)]) / len(self.slopes)#len(self.slopes[np.where(self.slopes < 0)]) / len(self.slopes)#
+        self.inverse_metric =  len(self.slopes[np.where(self.slopes > 0)]) / len(self.slopes)
+        #print(self.slopes, len(self.slopes[np.where(self.slopes >= 0)]))
         if np.isnan(self.metric):
             self.metric = 0.0
         if np.isnan(self.inverse_metric):
@@ -174,10 +175,10 @@ class Derivatives:
         self.preprocess()
         self.map()
         #Calculate dy/dx
-        self.slope_2()
+        self.slope()
         derivative = Derivatives(x=self.x, Y=self.slopes, r=self.r, name=self.name, N=self.N)
         #Calculate d2y/dx2
-        derivative.slope_2()
+        derivative.slope()
         derivative.save_image(Y)
 
         self.metric = derivative.metric 
@@ -185,20 +186,30 @@ class Derivatives:
 
 
 if __name__ == "__main__":
-    r=1.0
-
-    derivative = Derivatives(r=r)
-    x, Y = derivative.load()
+    #np.random.seed(420)
+    N=30
+    count = 0
+    Ys = np.zeros((125,N))
+    x = np.linspace(1, N, N)
+    x = np.sqrt(2) ** x * 16
+    for i in range(125):
+        Y = np.exp(-0.005*x)
+        Ys[i] = Y + np.random.normal(0,0.1*(np.max(Y) - np.min(Y)),N)
+    derivative = Derivatives(x=x, Y=Ys)
+    derivative.preprocess()
     derivative.map()
-    slopes = derivative.slope()
+    derivative.slope()
+    derivative_2 = Derivatives(x=derivative.x, Y=derivative.slopes, N=derivative.N, name="000-ground-up")
+    deriv_2 = derivative_2.slope()
+    derivative_2.save_image(Ys)
+    derivative.metric = derivative_2.metric 
+    derivative.inverse_metric = derivative_2.inverse_metric 
+    #plot(x,derivative.Y)
+    #xscale('log', base=2)
+    #plt.show()
+    #print(deriv_2)
+    print(derivative.metric, derivative.inverse_metric)
 
-    derivative = Derivatives(x=derivative.x, Y=slopes, r=r)
-
-    deriv_2 = derivative.slope()
-    derivative.save_image()
-
-    if derivative.debug:
-        print(deriv_2)
 #x2, d1 = default_derivative_calculator(x[::5], np.mean(Y.reshape((29,5)), axis=1))
 #x2, d2 = default_derivative_calculator(x2, d1)
 

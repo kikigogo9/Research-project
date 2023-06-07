@@ -45,7 +45,7 @@ if len(LEARNERS) != len(LEARNER_NAMES):
 
 def get_mean_curves(df):
     rows = []
-    for openmlid, df_dataset in tqdm(df.groupby("openmlid")):
+    for openmlid, df_dataset in df.groupby("openmlid"):
         for learner, df_learner in df_dataset.groupby("learner"):
             sizes = sorted(pd.unique(df_learner["size_train"]))
             scores = []
@@ -53,8 +53,8 @@ def get_mean_curves(df):
                 sizes_seed, scores_seed = df_seeded["size_train"].values, df_seeded["score_valid"].values
                 scores.append([scores_seed[list(sizes_seed).index(s)] if s in sizes_seed else np.nan for s in sizes])
             scores = np.array(scores)
-            mean_scores = np.nanmean(scores, axis=0)
-            mean_scores = np.array([mean_scores])
-            #mean_scores = np.nan_to_num(scores, copy=True, nan=0.5, posinf=1, neginf=0)
+            #mean_scores = np.nanmean(scores, axis=0)
+            #mean_scores = np.array([mean_scores])
+            mean_scores = np.nan_to_num(scores, copy=True, nan=1.0, posinf=1, neginf=0)
             rows.append([openmlid, learner, sizes, np.round(mean_scores, 4), np.round(1 - mean_scores, 4)])
     return pd.DataFrame(rows, columns=["openmlid", "learner", "sizes", "mean_accuracies", "mean_errorrates"])
