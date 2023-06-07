@@ -11,7 +11,7 @@ from tqdm import tqdm
 IMAGE_COUNT = 0
 
 class Derivatives:
-    def __init__(self, x=[], Y=[], r=0.5, name='default', N=1):
+    def __init__(self, x=[], Y=[], r=0.5, name='default', N=1, mode='all'):
         self.x = x
         self.Y = Y
         self.r = r
@@ -21,6 +21,11 @@ class Derivatives:
         self.metric = 0.0
         self.inverse_metric = 0.0
         self.N=N
+        self.mode = mode
+        if (mode == 'all'):
+            self.slope = self.slope_all
+        elif (mode == 'single'):
+            self.slope = self.slope_single
 
         self.draw_image = False
         self.debug = False
@@ -31,13 +36,34 @@ class Derivatives:
             distances[i] = self.logarithmic_distance(A, p)
         return distances
 
-    def slope(self):
+    def slope_single(self):
+        
+        self.slopes = np.zeros(len(self.x))
+
+
+        for i in range(len(self.x)):
+            low = max(0, (i//self.N -1)*self.N)
+            high = (i // self.N +2)* self.N
+            #neighbors = self.points[low:high]
+            #print(i // self.N * self.N , i // self.N * self.N + 2 * self.N)
+            
+
+            X = self.x[low:high:self.N].reshape((-1, 1))
+            y = self.Y[low:high:self.N]
+            model = LinearRegression()
+            model.fit(X, y)
+
+            self.slopes[i] = model.coef_[0]
+        
+        return self.slopes
+        
+    def slope_all(self):
         
         self.slopes = np.zeros(len(self.x))
 
         for i in range(len(self.x)):
-            low = max(0, i//self.N -1)
-            high = i // self.N * self.N + self.N
+            low = max(0, (i//self.N -1) * self.N)
+            high = (i // self.N +2) * self.N
             #neighbors = self.points[low:high]
             #print(i // self.N * self.N , i // self.N * self.N + 2 * self.N)
             
@@ -158,13 +184,24 @@ class Derivatives:
             print(f'Maximum nonconvexity: {np.min(deriv_2[np.where(deriv_2 < 0)])}')
         #np.sum(self.slopes[np.where(self.slopes < 0)]) *
         #np.sum(self.slopes[np.where(self.slopes >= 0)]) *
-        self.metric = len(self.slopes[np.where(self.slopes < 0)]) / len(self.slopes)#len(self.slopes[np.where(self.slopes < 0)]) / len(self.slopes)#
-        self.inverse_metric =  len(self.slopes[np.where(self.slopes > 0)]) / len(self.slopes)
+        if self.mode == 'all':
+            self.metric = len(self.slopes[np.where(self.slopes < 0)]) / len(self.slopes)#len(self.slopes[np.where(self.slopes < 0)]) / len(self.slopes)#
+            self.inverse_metric =  len(self.slopes[np.where(self.slopes > 0)]) / len(self.slopes)
+            if np.isnan(self.metric):
+                self.metric = 0.0
+            if np.isnan(self.inverse_metric):
+                self.inverse_metric = 0.0
+
+        else:
+            self.metric = np.zeros(self.N)
+            self.inverse_metric = np.zeros(self.N)
+            for i in range(self.N):
+                slopes = self.slopes[i::self.N]
+                self.metric[i] = len(slopes[np.where(slopes < 0)]) / len(slopes)#len(self.slopes[np.where(self.slopes < 0)]) / len(self.slopes)#
+                self.inverse_metric[i] =  len(slopes[np.where(slopes > 0)]) / len(slopes)
+            
         #print(self.slopes, len(self.slopes[np.where(self.slopes >= 0)]))
-        if np.isnan(self.metric):
-            self.metric = 0.0
-        if np.isnan(self.inverse_metric):
-            self.inverse_metric = 0.0
+
 
         plt.close()
         #plt.show()
@@ -176,7 +213,7 @@ class Derivatives:
         self.map()
         #Calculate dy/dx
         self.slope()
-        derivative = Derivatives(x=self.x, Y=self.slopes, r=self.r, name=self.name, N=self.N)
+        derivative = Derivatives(x=self.x, Y=self.slopes, r=self.r, name=self.name, N=self.N, mode=self.mode)
         #Calculate d2y/dx2
         derivative.slope()
         derivative.save_image(Y)
