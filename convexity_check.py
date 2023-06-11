@@ -173,7 +173,7 @@ class Derivatives:
             ax[0,1].set_title('Learning Curve and its Derivatives')
 
 
-            fig.tight_layout()
+            #fig.tight_layout()
         
         
             plt.savefig(f'results/plots/{self.name}.png')
@@ -186,7 +186,7 @@ class Derivatives:
         #np.sum(self.slopes[np.where(self.slopes >= 0)]) *
         if self.mode == 'all':
             self.metric = len(self.slopes[np.where(self.slopes < 0)]) / len(self.slopes)#len(self.slopes[np.where(self.slopes < 0)]) / len(self.slopes)#
-            self.inverse_metric =  len(self.slopes[np.where(self.slopes > 0)]) / len(self.slopes)
+            self.inverse_metric =  len(self.slopes[np.where(self.slopes >= 0)]) / len(self.slopes)
             if np.isnan(self.metric):
                 self.metric = 0.0
             if np.isnan(self.inverse_metric):
@@ -245,7 +245,7 @@ if __name__ == "__main__":
     #xscale('log', base=2)
     #plt.show()
     #print(deriv_2)
-    print(derivative.metric, derivative.inverse_metric)
+    print(derivative.metric, derivative.inverse_metric, derivative.metric - derivative.inverse_metric)
 
 #x2, d1 = default_derivative_calculator(x[::5], np.mean(Y.reshape((29,5)), axis=1))
 #x2, d2 = default_derivative_calculator(x2, d1)
