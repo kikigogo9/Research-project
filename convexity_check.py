@@ -6,6 +6,7 @@ from matplotlib import pyplot as plt
 from sklearn.linear_model import LinearRegression
 from scipy.signal import savgol_filter
 from tqdm import tqdm
+from scipy.stats import t
 #sorted points with regards to its x value
 
 IMAGE_COUNT = 0
@@ -17,17 +18,19 @@ class Derivatives:
         self.r = r
         #self.points = np.array(list(zip(x,Y)))
         self.slopes = None
+        self.confidence_interval = None
         self.name = name
         self.metric = 0.0
         self.inverse_metric = 0.0
         self.N=N
         self.mode = mode
+        self.alpha = 0.95
         if (mode == 'all'):
             self.slope = self.slope_all
         elif (mode == 'single'):
             self.slope = self.slope_single
 
-        self.draw_image = True
+        self.draw_image = False
         self.debug = False
 
     def calc_distances(self, A):
@@ -52,6 +55,8 @@ class Derivatives:
             y = self.Y[low:high:self.N]
             model = LinearRegression()
             model.fit(X, y)
+            
+
 
             self.slopes[i] = model.coef_[0]
         
@@ -60,7 +65,8 @@ class Derivatives:
     def slope_all(self):
         
         self.slopes = np.zeros(len(self.x))
-
+        self.confidence_interval = np.zeros((len(self.x), 2))
+        
         for i in range(len(self.x)):
             low = max(0, (i//self.N -1) * self.N)
             high = (i // self.N +2) * self.N
@@ -73,7 +79,15 @@ class Derivatives:
             model = LinearRegression()
             model.fit(X, y)
 
+            o_2 = ((model.predict(X) - y) ** 2 / (len(y) - 2)).sum()
+            SE =  np.sqrt(o_2/((np.mean(X)-X)**2).sum())
+            critical_value = t.ppf(1 - self.alpha / 2, len(X)-1)
+            interval = SE * critical_value
+
+            
             self.slopes[i] = model.coef_[0]
+            self.confidence_interval[i] = np.array([model.coef_[0]-interval, model.coef_[0]+interval])
+            
         
         return self.slopes
 
@@ -200,11 +214,37 @@ class Derivatives:
                 self.metric[i] = len(slopes[np.where(slopes < 0)]) / len(slopes)#len(self.slopes[np.where(self.slopes < 0)]) / len(self.slopes)#
                 self.inverse_metric[i] =  len(slopes[np.where(slopes > 0)]) / len(slopes)
             
+            self.metric = self.metric - self.inverse_metric
+            
+            self.inverse_metric = len(self.metric[np.where(self.metric >= 0)])/len(self.metric)
+            self.metric = len(self.metric[np.where(self.metric < 0)])/len(self.metric)
         #print(self.slopes, len(self.slopes[np.where(self.slopes >= 0)]))
 
 
         plt.close()
         #plt.show()
+    def getConfidence(self):
+        Y = np.array(self.Y, copy=True)  
+        #preprocess anchorns
+        self.preprocess()
+        self.map()
+        #Calculate dy/dx
+        self.slope()
+        derivative = Derivatives(x=self.x, Y=self.slopes, r=self.r, name=self.name, N=self.N, mode='all')
+        #Calculate d2y/dx2
+        derivative.slope()
+        derivative.save_image(Y)
+
+        count = 0
+        for i, slope in enumerate(derivative.slopes):
+            
+            if slope > 0 and (derivative.confidence_interval[i, 0] < 0):
+                count +=1
+            if slope < 0 and (derivative.confidence_interval[i, 1] > 0):
+                count +=1
+
+        self.metric = count/len(derivative.slopes) 
+
 
     def main(self):
         Y = np.array(self.Y, copy=True)  

@@ -1,31 +1,20 @@
 import numpy as np
-import statistics as stats
+from scipy.stats import t
+from sklearn.linear_model import LinearRegression
+
 # Sample data
-x = np.array([1, 2, 3, 4, 5])
+X = np.array([1, 2, 3, 4, 5]).reshape((-1,1))
 y = np.array([2, 5, 9, 15, 22])
+alpha = 0.05
+model = LinearRegression()
+model.fit(X, y)
 
-# Fit polynomial regression
-degree = 2
-coefficients = np.polyfit(x, y, degree)
-# Compute residuals
-predicted_values = np.polyval(coefficients, x)
-residuals = y - predicted_values
-# Compute standard deviation of residuals
-rmse = np.sqrt(np.sum(residuals**2) / (len(x) - degree - 1))
-# Compute standard errors for coefficients
-x_mean = np.mean(x)
-X = np.vander(x, degree + 1, increasing=True)
-X[:, 1:] *= np.power.outer(x - x_mean, np.arange(1, degree + 1))
-XtX_inv = np.linalg.inv(np.dot(X.T, X))
-coeff_std_errors = np.sqrt(np.diagonal(rmse**2 * XtX_inv))
-# Set the desired confidence level
-confidence_level = 0.95
+o_2 = ((model.predict(X) - y) ** 2 / (len(y) - 2)).sum()
+SE =  np.sqrt(o_2/((np.mean(X)-X)**2).sum())
+critical_value = t.ppf(1 - alpha / 2, len(X)-1)
+interval = SE * critical_value
 
-# Calculate the t-value
-t_value = np.abs(np.round(stats.t.ppf((1 - confidence_level) / 2, len(x) - degree - 1), decimals=4))
-# Calculate confidence intervals for coefficients
-lower_bounds = coefficients - t_value * coeff_std_errors
-upper_bounds = coefficients + t_value * coeff_std_errors
-
-# Combine lower and upper bounds
-confidence_interval = np.vstack((lower_bounds, upper_bounds)).T
+    
+asd = np.array([model.coef_[0]-interval, model.coef_[0]+interval])
+print(model.coef_[0])
+print(asd)
