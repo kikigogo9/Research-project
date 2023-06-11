@@ -27,7 +27,7 @@ class Derivatives:
         elif (mode == 'single'):
             self.slope = self.slope_single
 
-        self.draw_image = False
+        self.draw_image = True
         self.debug = False
 
     def calc_distances(self, A):
@@ -42,8 +42,8 @@ class Derivatives:
 
 
         for i in range(len(self.x)):
-            low = max(0, (i//self.N -1)*self.N)
-            high = (i // self.N +2)* self.N
+            low = max(0, i - self.N) 
+            high = i + 2*self.N
             #neighbors = self.points[low:high]
             #print(i // self.N * self.N , i // self.N * self.N + 2 * self.N)
             
@@ -173,7 +173,7 @@ class Derivatives:
             ax[0,1].set_title('Learning Curve and its Derivatives')
 
 
-            fig.tight_layout()
+#            fig.tight_layout()
         
         
             plt.savefig(f'results/plots/{self.name}.png')
