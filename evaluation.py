@@ -36,7 +36,7 @@ df_dataset = df_dataset.replace(np.nan,0)
 
 print('-------Experiment 1--------')
 
-print(df_v_dataset['Unnamed: 0'])
+print(df[df['M'] < 0].count()/df.count())
 print(df_learner.sort_values(by=['count'], ascending=False)['count'])
 print(df_dataset.sort_values(by=['count'])['count'])
 

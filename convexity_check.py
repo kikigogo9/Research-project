@@ -12,7 +12,7 @@ from scipy.stats import t
 IMAGE_COUNT = 0
 
 class Derivatives:
-    def __init__(self, x=[], Y=[], r=0.5, name='default', N=1, mode='all'):
+    def __init__(self, x=[], Y=[], r=0.5, name='default', N=1, mode='all', draw_result=False):
         self.x = x
         self.Y = Y
         self.r = r
@@ -30,7 +30,7 @@ class Derivatives:
         elif (mode == 'single'):
             self.slope = self.slope_single
 
-        self.draw_image = False
+        self.draw_image = draw_result
         self.debug = False
 
     def calc_distances(self, A):
@@ -81,7 +81,7 @@ class Derivatives:
 
             o_2 = ((model.predict(X) - y) ** 2 / (len(y) - 2)).sum()
             SE =  np.sqrt(o_2/((np.mean(X)-X)**2).sum())
-            critical_value = t.ppf(1 - self.alpha / 2, len(X)-1)
+            critical_value = t.ppf((1 - self.alpha) / 2, len(X)-1)
             interval = SE * critical_value
 
             
@@ -127,7 +127,7 @@ class Derivatives:
     def preprocess(self):
         self.N = self.Y.shape[0]
         
-        self.Y = self.Y.flatten()
+        self.Y = self.Y.T.flatten()
         
     
         self.x = np.repeat(self.x, self.N)
@@ -199,8 +199,8 @@ class Derivatives:
         #np.sum(self.slopes[np.where(self.slopes < 0)]) *
         #np.sum(self.slopes[np.where(self.slopes >= 0)]) *
         if self.mode == 'all':
-            self.metric = len(self.slopes[np.where(self.slopes < 0)]) / len(self.slopes)#len(self.slopes[np.where(self.slopes < 0)]) / len(self.slopes)#
-            self.inverse_metric =  len(self.slopes[np.where(self.slopes > 0)]) / len(self.slopes)
+            self.metric =  len(self.slopes[np.where(self.slopes < 0)]) / len(self.slopes)#len(self.slopes[np.where(self.slopes < 0)]) / len(self.slopes)#
+            self.inverse_metric = len(self.slopes[np.where(self.slopes >= 0)]) / len(self.slopes)
             if np.isnan(self.metric):
                 self.metric = 0.0
             if np.isnan(self.inverse_metric):
@@ -238,9 +238,9 @@ class Derivatives:
         count = 0
         for i, slope in enumerate(derivative.slopes):
             
-            if slope > 0 and (derivative.confidence_interval[i, 0] < 0):
+            if slope > 0 and (derivative.confidence_interval[i, 1] < 0):
                 count +=1
-            if slope < 0 and (derivative.confidence_interval[i, 1] > 0):
+            if slope < 0 and (derivative.confidence_interval[i, 0] > 0):
                 count +=1
 
         self.metric = count/len(derivative.slopes) 
@@ -264,28 +264,35 @@ class Derivatives:
 
 if __name__ == "__main__":
     #np.random.seed(420)
-    N=30
+    N=20
     count = 0
-    Ys = np.zeros((125,N))
-    x = np.linspace(1, N, N)
-    x = np.sqrt(2) ** x * 16
-    for i in range(125):
-        Y = np.exp(-0.005*x)
-        Ys[i] = Y + np.random.normal(0,0.1*(np.max(Y) - np.min(Y)),N)
-    derivative = Derivatives(x=x, Y=Ys)
-    derivative.preprocess()
-    derivative.map()
-    derivative.slope()
-    derivative_2 = Derivatives(x=derivative.x, Y=derivative.slopes, N=derivative.N, name="000-ground-up")
-    deriv_2 = derivative_2.slope()
-    derivative_2.save_image(Ys)
-    derivative.metric = derivative_2.metric 
-    derivative.inverse_metric = derivative_2.inverse_metric 
-    #plot(x,derivative.Y)
-    #xscale('log', base=2)
-    #plt.show()
-    #print(deriv_2)
-    print(derivative.metric, derivative.inverse_metric)
+    means = np.zeros((100,2))
+    for j in tqdm(range(100)):
+        Ys = np.zeros((125,N))
+        x = np.linspace(1, N, N)
+        x = np.sqrt(2) ** x * 16
+        for i in range(125):
+            Y = -x ** 2
+            Ys[i] = Y + np.random.normal(0,0.05*(np.max(Y) - np.min(Y)),N)
+        derivative = Derivatives(x=x, Y=Ys, draw_result=True)
+        derivative.preprocess()
+        derivative.map()
+        derivative.slope()
+        derivative_2 = Derivatives(x=derivative.x, Y=derivative.slopes, N=derivative.N, name="000-ground-up", draw_result=True)
+        deriv_2 = derivative_2.slope()
+        derivative_2.save_image(Ys)
+        derivative.metric = derivative_2.metric 
+        derivative.inverse_metric = derivative_2.inverse_metric 
+        #plot(x,derivative.Y)
+        #xscale('log', base=2)
+        #plt.show()
+        #print(deriv_2)
+        #print(derivative.metric, derivative.inverse_metric)
+
+        means[j,0] = derivative_2.metric
+        means[j,1] = derivative_2.inverse_metric
+    print(np.mean(means, axis=0))
+
 
 #x2, d1 = default_derivative_calculator(x[::5], np.mean(Y.reshape((29,5)), axis=1))
 #x2, d2 = default_derivative_calculator(x2, d1)
