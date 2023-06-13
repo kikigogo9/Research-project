@@ -45,7 +45,7 @@ class Derivatives:
 
 
         for i in range(len(self.x)):
-            low = max(0, i - self.N) 
+            low = max(i % self.N, i - self.N) 
             high = i + 2*self.N
             #neighbors = self.points[low:high]
             #print(i // self.N * self.N , i // self.N * self.N + 2 * self.N)
@@ -146,6 +146,7 @@ class Derivatives:
     def save_image(self, Y):
         
         if self.draw_image:
+            plt.rcParams.update({'font.size': 22})
             x = self.x[::self.N]
             deriv_1 = self.Y[::self.N]
             deriv_2 = self.slopes[::self.N]
@@ -153,14 +154,17 @@ class Derivatives:
 
             fig, ax = plt.subplots(2, 2, figsize=(25, 16))
 
-            hist = [-0.05,-0.025, 0, 0.025, 0.05, 0.15]
-
+            
+            
             nonconvex = deriv_2[np.where(deriv_2 < 0)]
             convex = deriv_2[np.where(deriv_2 >= 0)]
+            
+            bins=np.histogram(np.hstack((nonconvex,convex)), bins=40)[1] #get the bin edges
+
             if len(convex) > 0:
-                ax[0,0].hist(convex, linewidth=1) #[np.where(deriv_2 < 0)]
+                ax[0,0].hist(convex, bins, linewidth=1) #[np.where(deriv_2 < 0)]
             if len(nonconvex) > 0:    
-                ax[0,0].hist(nonconvex, linewidth=1) #[np.where(deriv_2 < 0)]
+                ax[0,0].hist(nonconvex, bins, linewidth=1) #[np.where(deriv_2 < 0)]
 
             #plt.hist(d2[np.where(d2 >= 0)], hist) #[np.where(deriv_2 < 0)]
             #plt.hist(d2[np.where(d2 < 0)], hist) #[np.where(deriv_2 < 0)]
@@ -212,9 +216,9 @@ class Derivatives:
             for i in range(self.N):
                 slopes = self.slopes[i::self.N]
                 self.metric[i] = len(slopes[np.where(slopes < 0)]) / len(slopes)#len(self.slopes[np.where(self.slopes < 0)]) / len(self.slopes)#
-                self.inverse_metric[i] =  len(slopes[np.where(slopes > 0)]) / len(slopes)
+                self.inverse_metric[i] =  len(slopes[np.where(slopes >= 0)]) / len(slopes)
             
-            self.metric = self.metric - self.inverse_metric
+            self.metric = -self.metric + self.inverse_metric
             
             self.inverse_metric = len(self.metric[np.where(self.metric >= 0)])/len(self.metric)
             self.metric = len(self.metric[np.where(self.metric < 0)])/len(self.metric)
@@ -272,7 +276,7 @@ if __name__ == "__main__":
         x = np.linspace(1, N, N)
         x = np.sqrt(2) ** x * 16
         for i in range(125):
-            Y = -x ** 2
+            Y = x ** 2
             Ys[i] = Y + np.random.normal(0,0.05*(np.max(Y) - np.min(Y)),N)
         derivative = Derivatives(x=x, Y=Ys, draw_result=True)
         derivative.preprocess()
@@ -291,7 +295,8 @@ if __name__ == "__main__":
 
         means[j,0] = derivative_2.metric
         means[j,1] = derivative_2.inverse_metric
-    print(np.mean(means, axis=0))
+    means = means.T[1]-means.T[0]
+    print(np.mean(means, axis=0), np.min(means, axis=0), np.max(means, axis=0))
 
 
 #x2, d1 = default_derivative_calculator(x[::5], np.mean(Y.reshape((29,5)), axis=1))

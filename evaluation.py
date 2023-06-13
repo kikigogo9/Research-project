@@ -62,6 +62,7 @@ df_2_convex['count'] = df_2_convex['Unnamed: 0']/ df_2[df_2['K'] >= 0].count()['
 #percentage of curves, where the curve was identified as convex/nonconvex, but the convexity of the individual curves was the opposite
 print(df_2_nonconvex['count'] , df_2_convex['count'])
 print(df_2_learner.sort_values(by=['count'])['count'])
+print(df_2.sort_values(by=['L']))
 
 print('--------Experiment 3--------')
 df_confidence_intervall =  pd.read_csv('results/confidence_interval.csv')
