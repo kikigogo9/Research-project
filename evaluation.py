@@ -37,6 +37,7 @@ df_dataset = df_dataset.replace(np.nan,0)
 print('-------Experiment 1--------')
 
 print(df[df['M'] < 0].count()/df.count())
+print(df)
 print(df_learner.sort_values(by=['count'], ascending=False)['count'])
 print(df_dataset.sort_values(by=['count'])['count'])
 
@@ -68,3 +69,11 @@ df_confidence_intervall =  pd.read_csv('results/confidence_interval.csv')
 df_ci = df_confidence_intervall.groupby(['learner']).mean().sort_values(by=['metric'],ascending=False)
 print(df_ci['metric'])
 print(df_confidence_intervall.sort_values(by=['metric'],ascending=False))
+
+print('-------LCDB comparision------')
+
+df_lcdb = pd.read_csv('results/lcdb-convexity.csv')
+
+df_lcdb = df_lcdb.sort_values(by=['max_violation'], ascending=False)
+
+print(df_lcdb)
