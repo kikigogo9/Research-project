@@ -18,7 +18,7 @@ r=0.5
 np.seterr(all="ignore")
 warnings.filterwarnings('ignore')
 
-pool = concurrent.futures.ThreadPoolExecutor(max_workers=4)
+pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
 
 #metrics = np.array([])
 
@@ -28,8 +28,16 @@ def job(df_learner, min_size, column, openmlid, learner):
     if np.count_nonzero(indices) < 3:
         return None
     relevant_sizes = sizes[indices]
+
+
     
     mean_accuracies = df_learner[column].values[0]
+    mask = np.all(np.isnan(mean_accuracies), axis=0)
+
+    mean_accuracies = mean_accuracies[:, ~mask]
+    relevant_sizes = relevant_sizes[~mask]
+    if np.all(mask):
+        return [openmlid, learner, 0.0, 0.0]        
     derivative = Derivatives(x=relevant_sizes, Y=mean_accuracies, name=f'{openmlid}-{learner}', mode='single')
     derivative.main()
     return [openmlid, learner, derivative.metric, derivative.inverse_metric]
@@ -65,5 +73,40 @@ def get_covexity_violations(df, column, is_increasing, min_size = 0):
 
     return pd.DataFrame(rows, columns=["openmlid", "learner", "violation", "acceptance"])
 
+#df_mean_curves = df_mean_curves[df_mean_curves['openmlid'] == 346]
+#df_mean_curves = df_mean_curves[df_mean_curves['learner'] == 'sklearn.linear_model.PassiveAggressiveClassifier']
+#curves = df_mean_curves["mean_errorrates"].values[0]
+
+
+#plt.plot(16*np.sqrt(2)**np.array(list(range(len(curves[0])))), np.mean(curves, axis=0), label='Averaged Learning Curve', linewidth='3')
+#
+#for i, curve in enumerate(curves):
+#    color = 'b'
+#    legend = None
+#    if i in [4,
+#6,
+#12,
+#14,
+#18,
+#21,23,24]:
+#        color = 'r'
+#        
+#    if i == 4:
+#        legend = "Nonconvex learning curve"
+#    if i == 5:
+#        legend = "Convex learning curve"
+#
+#
+#    plt.plot(16*np.sqrt(2)**np.array(list(range(len(curve)))), curve, color=color, label=legend)
+#
+##plt.plot(16*np.sqrt(2)**np.array(list(range(len(curves[0])))), np.mean(curves, axis=0), label='Averaged Learning Curve', linewidth='3')
+#plt.xscale("log", base=2)
+#plt.title("Individual Learning Curves")
+#plt.xlabel('Number of training samples')
+#plt.ylabel('Error rate')
+#
+#plt.legend()
+#plt.tight_layout()
+#plt.show()
 df_convexityviolations_mean = get_covexity_violations(df_mean_curves, "mean_errorrates", False)
 df_convexityviolations_mean.to_csv('results/convexity_single_violation.csv')  

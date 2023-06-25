@@ -18,7 +18,7 @@ r=0.5
 np.seterr(all="ignore")
 warnings.filterwarnings('ignore')
 
-pool = concurrent.futures.ThreadPoolExecutor(max_workers=4)
+pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
 
 #metrics = np.array([])
 
@@ -28,8 +28,16 @@ def job(df_learner, min_size, column, openmlid, learner):
     if np.count_nonzero(indices) < 3:
         return None
     relevant_sizes = sizes[indices]
+
+
     
     mean_accuracies = df_learner[column].values[0]
+    mask = np.all(np.isnan(mean_accuracies), axis=0)
+
+    mean_accuracies = mean_accuracies[:, ~mask]
+    relevant_sizes = relevant_sizes[~mask]
+    if np.all(mask):
+        return [openmlid, learner, 0.0, 0.0]    
     derivative = Derivatives(x=relevant_sizes, Y=mean_accuracies, name=f'{openmlid}-{learner}', mode='single')
     derivative.getConfidence()
     return [openmlid, learner, derivative.metric]

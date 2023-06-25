@@ -4,7 +4,6 @@ from matplotlib.pyplot import plot
 from matplotlib.pyplot import xscale, yscale
 from matplotlib import pyplot as plt
 from sklearn.linear_model import LinearRegression
-from scipy.signal import savgol_filter
 from tqdm import tqdm
 from scipy.stats import t
 #sorted points with regards to its x value
@@ -53,12 +52,17 @@ class Derivatives:
 
             X = self.x[low:high:self.N].reshape((-1, 1))
             y = self.Y[low:high:self.N]
-            model = LinearRegression()
-            model.fit(X, y)
             
+            try:
+                model = LinearRegression()
+                model.fit(X, y)
+                self.slopes[i] = model.coef_[0]
+            except:
+                #set the slope to 0 if there are any nan datapoints, usually it is on the 1st or 2nd element
+                self.slopes[i] = 0
 
 
-            self.slopes[i] = model.coef_[0]
+            
         
         return self.slopes
         
@@ -76,8 +80,22 @@ class Derivatives:
 
             X = self.x[low:high].reshape((-1, 1))
             y = self.Y[low:high]
-            model = LinearRegression()
-            model.fit(X, y)
+
+            mask = np.isfinite(y) & np.isfinite(y)
+            X =  X[mask]
+            y = y[mask]
+
+            try:
+                model = LinearRegression()
+                model.fit(X, y)
+            except:
+                print(y)
+                print(self.Y)
+
+            low = i//self.N * self.N
+            high = (i // self.N +1) * self.N
+
+            
 
             o_2 = ((model.predict(X) - y) ** 2 / (len(y) - 2)).sum()
             SE =  np.sqrt(o_2/((np.mean(X)-X)**2).sum())
@@ -126,6 +144,7 @@ class Derivatives:
         
     def preprocess(self):
         self.N = self.Y.shape[0]
+        #np.save('out.npz', self.Y.T[0])
         
         self.Y = self.Y.T.flatten()
         
@@ -146,52 +165,55 @@ class Derivatives:
     def save_image(self, Y):
         
         if self.draw_image:
-            plt.rcParams.update({'font.size': 22})
+            plt.rcParams.update({'font.size': 14})
             x = self.x[::self.N]
             deriv_1 = self.Y[::self.N]
             deriv_2 = self.slopes[::self.N]
             Y_mean = np.mean(Y, axis=0)
 
-            fig, ax = plt.subplots(2, 2, figsize=(25, 16))
+            fig, ax = plt.subplots()
 
             
             
-            nonconvex = deriv_2[np.where(deriv_2 < 0)]
-            convex = deriv_2[np.where(deriv_2 >= 0)]
+            #nonconvex = deriv_2[np.where(deriv_2 < 0)]
+            #convex = deriv_2[np.where(deriv_2 >= 0)]
             
-            bins=np.histogram(np.hstack((nonconvex,convex)), bins=40)[1] #get the bin edges
+            #bins=np.histogram(np.hstack((nonconvex,convex)), bins=40)[1] #get the bin edges
 
-            if len(convex) > 0:
-                ax[0,0].hist(convex, bins, linewidth=1) #[np.where(deriv_2 < 0)]
-            if len(nonconvex) > 0:    
-                ax[0,0].hist(nonconvex, bins, linewidth=1) #[np.where(deriv_2 < 0)]
+            #if len(convex) > 0:
+            #    ax[0,0].hist(convex, bins, linewidth=1) #[np.where(deriv_2 < 0)]
+            #if len(nonconvex) > 0:    
+            #    ax[0,0].hist(nonconvex, bins, linewidth=1) #[np.where(deriv_2 < 0)]
 
             #plt.hist(d2[np.where(d2 >= 0)], hist) #[np.where(deriv_2 < 0)]
             #plt.hist(d2[np.where(d2 < 0)], hist) #[np.where(deriv_2 < 0)]
-            ax[0,0].legend(['number of convex anchors', 'number of nonconvex anchors'])
-            ax[0,0].set_xlabel('Magnitude of Second Derivatives')
-            ax[0,0].set_ylabel('Second Derivative Value Frequency')
-            ax[0,0].set_title('Frequency Distribution of Second Derivative Values')
+            #ax[0,0].legend(['number of convex anchors', 'number of nonconvex anchors'])
+            #ax[0,0].set_xlabel('Magnitude of Second Derivatives')
+            #ax[0,0].set_ylabel('Second Derivative Value Frequency')
+            #ax[0,0].set_title('Frequency Distribution of Second Derivative Values')
 
-            ax[0,1].set_xscale("log", base=2)
-            ax[1,1].set_xscale("log", base=2)
-            ax[1,0].set_xscale("log", base=2)
-            ax[1,0].plot(x, deriv_1, color='green')
-            ax[1,1].plot(x, deriv_2, color='red')
-            ax[0,1].plot(x, Y_mean)
-            ax[0,1].fill_between(x, np.max(Y, axis=0), np.min(Y, axis=0), alpha=0.3)
+            ax.set_xscale("log", base=2)
+            #ax[1,1].set_xscale("log", base=2)
+            #ax[1,0].set_xscale("log", base=2)
+            #ax[1,0].plot(x, deriv_1, color='green')
+            #ax[1,1].plot(x, deriv_2, color='red')
+            ax.plot(x, Y_mean)
+            #ax[0,1].fill_between(x, np.max(Y, axis=0), np.min(Y, axis=0), alpha=0.3)
+
+            #ax[1,1].set_xlabel("Number of training samples")
+            #ax[1,1].set_ylabel('Magnitude of Second Derivative')
             #for i in range(5):
             #    plot(x[i::5], Y[i::5])
             #        xscale("log", base=2)
-            ax[0,1].legend(['learning curve'])
-            ax[1,1].legend(['2nd derivative'])
-            ax[1,0].legend(['1st derivative'])
-            ax[0,1].set_xlabel('Number of training samples')
-            ax[0,1].set_ylabel('Error rate')
-            ax[0,1].set_title('Learning Curve and its Derivatives')
+            ax.legend(['learning curve'])
+            #ax[1,1].legend(['2nd derivative'])
+            #ax[1,0].legend(['1st derivative'])
+            ax.set_xlabel('Sample size')
+            ax.set_ylabel('Error rate')
+            ax.set_title('Learning Curve')
 
 
-#            fig.tight_layout()
+            fig.tight_layout()
         
         
             plt.savefig(f'results/plots/{self.name}.png')
@@ -231,7 +253,7 @@ class Derivatives:
         Y = np.array(self.Y, copy=True)  
         #preprocess anchorns
         self.preprocess()
-        self.map()
+        
         #Calculate dy/dx
         self.slope()
         derivative = Derivatives(x=self.x, Y=self.slopes, r=self.r, name=self.name, N=self.N, mode='all')
@@ -254,10 +276,10 @@ class Derivatives:
         Y = np.array(self.Y, copy=True)  
         #preprocess anchorns
         self.preprocess()
-        self.map()
+        
         #Calculate dy/dx
         self.slope()
-        derivative = Derivatives(x=self.x, Y=self.slopes, r=self.r, name=self.name, N=self.N, mode=self.mode)
+        derivative = Derivatives(x=self.x, Y=self.slopes, r=self.r, name=self.name, N=self.N, mode=self.mode, draw_result=self.draw_image)
         #Calculate d2y/dx2
         derivative.slope()
         derivative.save_image(Y)
@@ -280,11 +302,11 @@ if __name__ == "__main__":
             Ys[i] = Y + np.random.normal(0,0.05*(np.max(Y) - np.min(Y)),N)
         derivative = Derivatives(x=x, Y=Ys, draw_result=True)
         derivative.preprocess()
-        derivative.map()
+        
         derivative.slope()
         derivative_2 = Derivatives(x=derivative.x, Y=derivative.slopes, N=derivative.N, name="000-ground-up", draw_result=True)
         deriv_2 = derivative_2.slope()
-        derivative_2.save_image(Ys)
+        derivative_2.save_image(derivative.Y.reshape((20, 125)).T)
         derivative.metric = derivative_2.metric 
         derivative.inverse_metric = derivative_2.inverse_metric 
         #plot(x,derivative.Y)

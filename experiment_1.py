@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import warnings
 import concurrent.futures
-
+import sys
 from convexity_check import Derivatives
 from util import * # utility functions for this evaluation
 
@@ -17,8 +17,9 @@ r=0.5
 
 np.seterr(all="ignore")
 warnings.filterwarnings('ignore')
+np.set_printoptions(threshold=sys.maxsize)
 
-pool = concurrent.futures.ThreadPoolExecutor(max_workers=40)
+pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
 
 #metrics = np.array([])
 
@@ -30,7 +31,14 @@ def job(df_learner, min_size, column, openmlid, learner):
     relevant_sizes = sizes[indices]
     
     mean_accuracies = df_learner[column].values[0]
-    derivative = Derivatives(x=relevant_sizes, Y=mean_accuracies, name=f'{openmlid}-{learner}')
+    #remove all columns that are entirely nan valued
+    mask = np.all(np.isnan(mean_accuracies), axis=0)
+
+    mean_accuracies = mean_accuracies[:, ~mask]
+    relevant_sizes = relevant_sizes[~mask]
+    if np.all(mask):
+        return [openmlid, learner, 0.0, 0.0]
+    derivative = Derivatives(x=relevant_sizes, Y=mean_accuracies, name=f'{openmlid}-{learner}', draw_result=True)
     derivative.main()
     return [openmlid, learner, derivative.metric, derivative.inverse_metric]
 

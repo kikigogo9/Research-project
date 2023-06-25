@@ -55,6 +55,7 @@ def get_mean_curves(df):
             scores = np.array(scores)
             #mean_scores = np.nanmean(scores, axis=0)
             #mean_scores = np.array([mean_scores])
-            mean_scores = np.nan_to_num(scores, copy=True, nan=1.0, posinf=1, neginf=0)
+            #mean_scores = np.nan_to_num(scores, copy=True, nan=1.0, posinf=1, neginf=0)
+            mean_scores = scores
             rows.append([openmlid, learner, sizes, np.round(mean_scores, 4), np.round(1 - mean_scores, 4)])
     return pd.DataFrame(rows, columns=["openmlid", "learner", "sizes", "mean_accuracies", "mean_errorrates"])

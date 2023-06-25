@@ -62,19 +62,33 @@ df_2_convex['count'] = df_2_convex['Unnamed: 0']/ df_2[df_2['K'] >= 0].count()['
 #percentage of curves, where the curve was identified as convex/nonconvex, but the convexity of the individual curves was the opposite
 print(df_2_nonconvex['count'] , df_2_convex['count'])
 print(df_2_learner.sort_values(by=['count'])['count'])
-print(df_2.sort_values(by=['L']))
+print(df_2.sort_values(by=['L']).head(20))
 
 print('--------Experiment 3--------')
 df_confidence_intervall =  pd.read_csv('results/confidence_interval.csv')
+df_confidence_intervall['M'] = df['M']
 
+df_ci_nonconvex = df_confidence_intervall[df_confidence_intervall['M'] < 0].count()
+
+print(df_confidence_intervall[df_confidence_intervall['M'] < 0].mean()['metric'], df_confidence_intervall[df_confidence_intervall['M'] >= 0].mean()['metric'])
+
+print(df_confidence_intervall.mean())
 df_ci = df_confidence_intervall.groupby(['learner']).mean().sort_values(by=['metric'],ascending=False)
+df_ci_dataset = df_confidence_intervall.groupby(['openmlid']).mean().sort_values(by=['metric'],ascending=False)
 print(df_ci['metric'])
-print(df_confidence_intervall.sort_values(by=['metric'],ascending=False))
+print(df_ci_dataset['metric'])
 
 print('-------LCDB comparision------')
 
+pd.options.display.max_rows = None
+
 df_lcdb = pd.read_csv('results/lcdb-convexity.csv')
 
-df_lcdb = df_lcdb.sort_values(by=['max_violation'], ascending=False)
+df_lcdb = df_lcdb.sort_values(by=['max_violation'], ascending=True)
+df_lcdb['M'] = df['M']
 
-print(df_lcdb)
+print(df_lcdb.tail(10))
+
+#print(df['learner'].nunique())
+
+print(df[df['learner'] == 'SVC_sigmoid'])
